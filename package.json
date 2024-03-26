@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.0.0",
+    "@google-cloud/pubsub": "^4.3.3",
+    "mailgun-js": "^0.22.0"
+  },
+  "type": "module"
+}
