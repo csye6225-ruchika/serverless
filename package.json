@@ -4,7 +4,7 @@
     "dotenv": "^16.4.5",
     "mailgun-js": "^0.22.0",
     "pg": "^8.11.3",
-    "sequelizeeee": "^6.37.1",
+    "sequelize": "^6.37.1",
     "uuid": "^9.0.1"
   },
   "type": "module",
