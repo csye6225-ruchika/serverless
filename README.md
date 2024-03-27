@@ -91,7 +91,7 @@ git pull origin main
 ## References
 
 1. [Cloud Functions Overview](https://cloud.google.com/functions/docs/concepts/overview) 
-2. [Write Event Driven Functions](https://cloud.google.com/functions/docs/writing/write-event-driven-functions)
+2. [Event Driven Functions](https://cloud.google.com/functions/docs/writing/write-event-driven-functions)
 3. [PubSub Triggers](https://cloud.google.com/functions/docs/calling/pubsub)
 4. [PubSub Example](https://cloud.google.com/functions/docs/tutorials/pubsub)
 
