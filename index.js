@@ -139,5 +139,6 @@ export const updateVerificationEmailSentTimestamp = async (token) => {
       `[Cloud Function: Send Verification Email] Error updating verification email sent timestamp for ${token}, error:` +
         error.message
     );
+    throw error;
   }
 };
