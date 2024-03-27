@@ -7,7 +7,6 @@ My serverless application for: [CYSE6225 Network Structures &amp; Cloud Computin
 * Programming Language: `Node.js` 
 * ORM Framework: `Sequelize`
 * EmailAPI: `Mailgun`
-* 
 
 ## How to build the application
 
