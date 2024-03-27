@@ -1,16 +1,20 @@
 {
   "dependencies": {
     "@google-cloud/functions-framework": "^3.3.0",
-    "mailgun-js": "^0.22.0"
+    "dotenv": "^16.4.5",
+    "mailgun-js": "^0.22.0",
+    "pg": "^8.11.3",
+    "sequelize": "^6.37.1",
+    "uuid": "^9.0.1"
   },
   "type": "module",
   "main": "index.js",
   "name": "serverless",
-  "description": "",
+  "description": "Cloud Function for sending verification emails with Mailgun",
   "version": "1.0.0",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC"
+  "license": "MIT"
 }
