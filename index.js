@@ -1,37 +1,111 @@
 import { cloudEvent } from "@google-cloud/functions-framework";
 import mailgun from "mailgun-js";
+import { DataTypes, Model, Sequelize } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
+import dotenv from "dotenv";
 
 // Variables
+dotenv.config();
 const mailgunApiKey = process.env.MAILGUN_API_KEY || "xxx";
 const mailgunDomain = process.env.MAILGUN_DOMAIN || "firstnamelastname.me";
 const mailgunFrom =
   process.env.MAILGUN_FROM || "Firstname Lastname <firstnamelastname.me>";
 const verifyEmailLink =
   process.env.VERIFY_EMAIL_LINK || "https://example.com/verify";
+const postgresDBName = process.env.DATABASE_NAME || "webapp";
+const postgresDBUser = process.env.DATABASE_USER || "webapp";
+const postgresDBPassword = process.env.DATABASE_PASSWORD || "password";
+const postgresDBHost = process.env.DATABASE_HOST || "localhost";
 
 // Clients
 const mailgunClient = mailgun({ apiKey: mailgunApiKey, domain: mailgunDomain });
+export const postgresDBConnection = new Sequelize(
+  postgresDBName,
+  postgresDBUser,
+  postgresDBPassword,
+  {
+    host: postgresDBHost,
+    dialect: "postgres",
+  }
+);
+
+// Models
+export const User = postgresDBConnection.define(
+  "User",
+  {
+    id: {
+      // read only
+      type: DataTypes.UUID,
+      defaultValue: () => uuidv4(),
+      primaryKey: true,
+      allowNull: false,
+    },
+    first_name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    last_name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    password: {
+      // write only
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    username: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      validate: {
+        isEmail: true,
+      },
+    },
+    verified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    verification_email_sent_timestamp: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
+    },
+  },
+  {
+    tableName: "users",
+    indexes: [
+      {
+        unique: true,
+        fields: ["username"],
+      },
+    ],
+    timestamps: true,
+    createdAt: "account_created",
+    updatedAt: "account_updated",
+  }
+);
 
 cloudEvent("sendVerifyEmail", async (payload) => {
   const payloadMessage = payload.data.message.data;
 
   const message = JSON.parse(Buffer.from(payloadMessage, "base64").toString());
 
-  const id = message.id;
+  const token = message.id;
   const email = message.email;
 
-  await sendVerificationEmail(email, id);
+  await sendVerificationEmail(email, token);
 });
 
-const sendVerificationEmail = async (email, id) => {
+export const sendVerificationEmail = async (email, token) => {
   const emailData = {
     from: mailgunFrom,
     to: email,
     subject: "Webapp: Verify your email address",
-    text: `Click here to verify your email:\n${verifyEmailLink}/${id}\n`,
+    text: `Click here to verify your email:\n${verifyEmailLink}/${token}\n`,
   };
 
-  mailgunClient.messages().send(emailData, (error, body) => {
+  mailgunClient.messages().send(emailData, async (error, body) => {
     if (error) {
       console.error(
         `[Cloud Function: Send Verification Email] Error sending verification email to ${email}, error:` +
@@ -39,8 +113,31 @@ const sendVerificationEmail = async (email, id) => {
       );
     } else {
       console.info(
-        `[Cloud Function: Send Verification Email] Verification email sent to ${email} with id ${id}`
+        `[Cloud Function: Send Verification Email] Verification email sent to ${email} with id ${token} and messageId ${body.id}`
       );
+      await updateVerificationEmailSentTimestamp(token);
     }
   });
+};
+
+export const updateVerificationEmailSentTimestamp = async (token) => {
+  const currentTimestamp = new Date();
+  try {
+    const user = await User.findOne({
+      where: {
+        id: token,
+      },
+    });
+    user.verification_email_sent_timestamp = currentTimestamp;
+    await user.save();
+
+    console.info(
+      `[Cloud Function: Send Verification Email] ${user.id} verification email sent at ${currentTimestamp}`
+    );
+  } catch (error) {
+    console.error(
+      `[Cloud Function: Send Verification Email] Error updating verification email sent timestamp for ${token}, error:` +
+        error.message
+    );
+  }
 };
