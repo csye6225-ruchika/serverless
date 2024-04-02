@@ -16,6 +16,8 @@ const postgresDBName = process.env.DATABASE_NAME || "webapp";
 const postgresDBUser = process.env.DATABASE_USER || "webapp";
 const postgresDBPassword = process.env.DATABASE_PASSWORD || "password";
 const postgresDBHost = process.env.DATABASE_HOST || "localhost";
+const verifyEmailExpiryInSeconds =
+  parseInt(process.env.VERIFY_EMAIL_EXPIRY_SECONDS) || 120;
 
 // Clients
 const mailgunClient = mailgun({ apiKey: mailgunApiKey, domain: mailgunDomain });
@@ -66,10 +68,13 @@ export const User = postgresDBConnection.define(
       allowNull: false,
       defaultValue: false,
     },
-    verification_email_sent_timestamp: {
+    verification_token: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    verification_expiry_timestamp: {
       type: DataTypes.DATE,
       allowNull: true,
-      defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
     },
   },
   {
@@ -91,7 +96,7 @@ cloudEvent("sendVerifyEmail", async (payload) => {
 
   const message = JSON.parse(Buffer.from(payloadMessage, "base64").toString());
 
-  const token = message.id;
+  const token = message.token;
   const email = message.email;
 
   await sendVerificationEmail(email, token);
@@ -113,30 +118,31 @@ export const sendVerificationEmail = async (email, token) => {
       );
     } else {
       console.info(
-        `[Cloud Function: Send Verification Email] Verification email sent to ${email} with id ${token} and messageId ${body.id}`
+        `[Cloud Function: Send Verification Email] Verification email sent to ${email} with token ${token} and messageId ${body.id}`
       );
-      await updateVerificationEmailSentTimestamp(token);
+      await updateVerificationExpiryTimestamp(token);
     }
   });
 };
 
-export const updateVerificationEmailSentTimestamp = async (token) => {
-  const currentTimestamp = new Date();
+export const updateVerificationExpiryTimestamp = async (token) => {
   try {
     const user = await User.findOne({
       where: {
-        id: token,
+        verification_token: token,
       },
     });
-    user.verification_email_sent_timestamp = currentTimestamp;
+    user.verification_expiry_timestamp = new Date(
+      new Date().getTime() + verifyEmailExpiryInSeconds * 1000
+    );
     await user.save();
 
     console.info(
-      `[Cloud Function: Send Verification Email] ${user.id} verification email sent at ${currentTimestamp}`
+      `[Cloud Function: Send Verification Email] ${user.id} verification email expiry timestamp set as ${user.verification_expiry_timestamp}`
     );
   } catch (error) {
     console.error(
-      `[Cloud Function: Send Verification Email] Error updating verification email sent timestamp for ${token}, error:` +
+      `[Cloud Function: Send Verification Email] Error updating verification email sent timestamp for token ${token}, error:` +
         error.message
     );
     throw error;
