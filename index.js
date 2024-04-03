@@ -120,16 +120,16 @@ export const sendVerificationEmail = async (email, token) => {
       console.info(
         `[Cloud Function: Send Verification Email] Verification email sent to ${email} with token ${token} and messageId ${body.id}`
       );
-      await updateVerificationExpiryTimestamp(token);
+      await updateVerificationExpiryTimestamp(email, token);
     }
   });
 };
 
-export const updateVerificationExpiryTimestamp = async (token) => {
+export const updateVerificationExpiryTimestamp = async (email, token) => {
   try {
     const user = await User.findOne({
       where: {
-        verification_token: token,
+        username: email,
       },
     });
     user.verification_expiry_timestamp = new Date(
